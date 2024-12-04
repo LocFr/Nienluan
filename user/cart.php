@@ -72,6 +72,62 @@ if(!empty($_SESSION['cart'])) {
         }
     }
 }
+
+// Thêm phần xử lý thanh toán sau phần xử lý giỏ hàng
+if(isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
+    try {
+        // Kiểm tra đăng nhập
+        if(!isset($_SESSION['USER'])) {
+            $_SESSION['error'] = "Vui lòng đăng nhập để thanh toán";
+            header("Location: userlogin.php");
+            exit();
+        }
+
+        $user_id = $_SESSION['USER']['id'];
+        $order_date = date('Y-m-d H:i:s');
+        $shipping_address = $_POST['shipping_address']; // Thêm địa chỉ giao hàng
+        $phone = $_POST['phone']; // Thêm số điện thoại
+        $payment_method = $_POST['payment_method']; // Thêm phương thức thanh toán
+
+        // Tạo đơn hàng mới
+        $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, order_date, status, shipping_address, phone, payment_method) 
+                               VALUES (?, ?, ?, 'pending', ?, ?, ?)");
+        $stmt->execute([$user_id, $total, $order_date, $shipping_address, $phone, $payment_method]);
+        $order_id = $conn->lastInsertId();
+
+        // Thêm chi tiết đơn hàng
+        foreach($_SESSION['cart'] as $product_id => $quantity) {
+            $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+            $stmt->execute([$product_id]);
+            $product = $stmt->fetch();
+            
+            if($product) {
+                // Kiểm tra số lượng tồn kho
+                if($product['quantity'] < $quantity) {
+                    throw new Exception("Sản phẩm {$product['name']} chỉ còn {$product['quantity']} sản phẩm");
+                }
+
+                // Thêm vào order_details
+                $stmt = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$order_id, $product_id, $quantity, $product['price']]);
+
+                // Cập nhật số lượng sản phẩm
+                $stmt = $conn->prepare("UPDATE products SET quantity = quantity - ? WHERE id = ?");
+                $stmt->execute([$quantity, $product_id]);
+            }
+        }
+
+        // Xóa giỏ hàng
+        unset($_SESSION['cart']);
+
+        $_SESSION['success'] = "Đặt hàng thành công! Mã đơn hàng của bạn là #" . $order_id;
+        header("Location: order_success.php?order_id=" . $order_id);
+        exit();
+
+    } catch(Exception $e) {
+        $_SESSION['error'] = "Lỗi khi đặt hàng: " . $e->getMessage();
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -287,11 +343,55 @@ if(!empty($_SESSION['cart'])) {
                 <div class="text-end">
                     <strong>Tổng cộng:</strong> <?php echo number_format($total, 0, ',', '.'); ?>đ
                 </div>
-                <div class="text-end mt-3">
-                    <button type="submit" name="update" class="btn btn-primary">Cập nhật giỏ hàng</button>
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" name="update" class="btn btn-outline-primary">
+                        <i class="fas fa-sync-alt me-2"></i>Cập nhật
+                    </button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#checkoutModal">
+                        <i class="fas fa-check me-2"></i>Thanh toán
+                    </button>
                 </div>
             </form>
         <?php endif; ?>
+    </div>
+
+    <!-- Thêm modal thanh toán -->
+    <div class="modal fade" id="checkoutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-purple text-white">
+                    <h5 class="modal-title">Thông tin thanh toán</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="post" action="process_order.php">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên</label>
+                            <input type="text" name="fullname" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Số điện thoại</label>
+                            <input type="tel" name="phone" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Địa chỉ giao hàng</label>
+                            <textarea name="address" class="form-control" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phương thức thanh toán</label>
+                            <select name="payment_method" class="form-select" required>
+                                <option value="cod">Thanh toán khi giao hàng (COD)</option>
+                                <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" class="btn btn-primary">Đặt hàng</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </body>
 </html>

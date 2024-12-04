@@ -102,10 +102,11 @@ include 'config.php';
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .dropdown-item {
-            color: #0d6efd;
+            color: #0d6efd !important; /* Màu xanh của Bootstrap */
         }
         .dropdown-item:hover {
-            background: #e9ecef;
+            color: #0a58ca !important; /* Màu xanh đậm hơn khi hover */
+            background-color: #f8f9fa;
         }
     </style>
 </head>
@@ -114,7 +115,7 @@ include 'config.php';
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" href="index.php">
-                <img src="images/logo.png" alt="XLight Logo" height="40">
+                <img src="images/logo.png" alt="XLight Logo" height="50">
                 XLight
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -140,12 +141,12 @@ include 'config.php';
                                 </a>
                                 <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                                     <li>
-                                        <a class="dropdown-item" href="admin/manage_products.php">
+                                        <a class="dropdown-item text-primary" href="admin/manage_products.php">
                                             <i class="fas fa-box"></i> Quản lý hàng hóa
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item" href="admin/manage_users.php">
+                                        <a class="dropdown-item text-primary" href="admin/manage_users.php">
                                             <i class="fas fa-users"></i> Quản lý tài khoản
                                         </a>
                                     </li>

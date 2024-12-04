@@ -14,7 +14,7 @@
             </a>
         </div>
         
-        <!-- Form thêm sản phẩm -->
+        <!-- Thêm sản phẩm -->
         <div class="card mb-4">
             <div class="card-body">
                 <h5>Thêm sản phẩm mới</h5>
