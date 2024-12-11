@@ -102,10 +102,10 @@ include 'config.php';
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         .dropdown-item {
-            color: #0d6efd !important; /* Màu xanh của Bootstrap */
+            color: #6a5acd !important; 
         }
         .dropdown-item:hover {
-            color: #0a58ca !important; /* Màu xanh đậm hơn khi hover */
+            color: #6a5acd !important; 
             background-color: #f8f9fa;
         }
     </style>
@@ -123,7 +123,6 @@ include 'config.php';
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                   
                     <li class="nav-item">
                         <a class="nav-link" href="user/customer.php">Hàng hóa</a>
                     </li>
@@ -131,23 +130,36 @@ include 'config.php';
                         <li class="nav-item">
                             <a class="nav-link" href="user/cart.php">
                                 <i class="fas fa-shopping-cart"></i> Giỏ hàng
+                                <?php if(!empty($_SESSION['cart'])): ?>
+                                    <span class="badge bg-danger"><?php echo count($_SESSION['cart']); ?></span>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="user/donhang.php">
+                                <i class="fas fa-file-invoice"></i> Đơn hàng
                             </a>
                         </li>
                         <?php if($_SESSION['USER']['role'] == 'admin'): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" 
-                                   role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                   role="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-cog"></i> Quản lý
                                 </a>
-                                <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <ul class="dropdown-menu">
                                     <li>
-                                        <a class="dropdown-item text-primary" href="admin/manage_products.php">
+                                        <a class="dropdown-item" href="admin/manage_products.php">
                                             <i class="fas fa-box"></i> Quản lý hàng hóa
                                         </a>
                                     </li>
                                     <li>
-                                        <a class="dropdown-item text-primary" href="admin/manage_users.php">
+                                        <a class="dropdown-item" href="admin/manage_users.php">
                                             <i class="fas fa-users"></i> Quản lý tài khoản
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="admin/manage_orders.php">
+                                            <i class="fas fa-file-invoice-dollar"></i> Quản lý đơn hàng
                                         </a>
                                     </li>
                                 </ul>
@@ -183,64 +195,6 @@ include 'config.php';
         </div>
     </nav>
 
-    <!-- Banner full width -->
-    <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
-        <div class="carousel-indicators">
-            <?php
-            try {
-                $sql = "SELECT * FROM products WHERE quantity > 0 ORDER BY id DESC LIMIT 3";
-                $stmt = $conn->prepare($sql);
-                $stmt->execute();
-                $featured_products = $stmt->fetchAll();
-                
-                foreach($featured_products as $key => $product) {
-                    echo '<button type="button" data-bs-target="#productCarousel" 
-                                 data-bs-slide-to="'.$key.'" 
-                                 '.($key == 0 ? 'class="active"' : '').'></button>';
-                }
-            } catch(PDOException $e) {
-                echo '<div class="alert alert-danger">Lỗi: ' . $e->getMessage() . '</div>';
-            }
-            ?>
-        </div>
-        
-        <div class="carousel-inner">
-            <?php foreach($featured_products as $key => $product): ?>
-                <div class="carousel-item <?php echo $key == 0 ? 'active' : ''; ?>">
-                    <img src="images/<?php echo $product['image']; ?>" 
-                         class="d-block w-100" 
-                         alt="<?php echo $product['name']; ?>">
-                    <div class="carousel-caption">
-                        <h5 class="mb-2"><?php echo htmlspecialchars($product['name']); ?></h5>
-                        <p class="text-warning h5 mb-2">
-                            <?php echo number_format($product['price'], 0, ',', '.'); ?>đ
-                        </p>
-                        <?php if(isset($_SESSION['USER'])): ?>
-                            <a href="user/cart.php?action=add&id=<?php echo $product['id']; ?>" 
-                               class="btn btn-primary btn-sm">
-                                <i class="fas fa-cart-plus"></i> Thêm vào giỏ
-                            </a>
-                        <?php else: ?>
-                            <a href="user/userlogin.php" class="btn btn-primary btn-sm">
-                                Đăng nhập để mua hàng
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-        
-        <button class="carousel-control-prev" type="button" 
-                data-bs-target="#productCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" 
-                data-bs-target="#productCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
-    </div>
 
     <!-- Main Content -->
     <div class="container">

@@ -16,6 +16,15 @@ if(isset($_GET['delete'])) {
     header("Location: manage_users.php");
     exit();
 }
+
+// Xử lý cấp quyền admin
+if(isset($_GET['promote'])) {
+    $id = $_GET['promote'];
+    $stmt = $conn->prepare("UPDATE users SET role = 'admin' WHERE id = ?");
+    $stmt->execute([$id]);
+    header("Location: manage_users.php");
+    exit();
+}
 ?>
 
 <!DOCTYPE html>
@@ -56,6 +65,11 @@ if(isset($_GET['delete'])) {
                                    class="btn btn-danger btn-sm"
                                    onclick="return confirm('Bạn có chắc muốn xóa?')">
                                     Xóa
+                                </a>
+                                <a href="?promote=<?php echo $row['id']; ?>" 
+                                   class="btn btn-success btn-sm"
+                                   onclick="return confirm('Bạn có chắc muốn cấp quyền admin?')">
+                                    Cấp quyền admin
                                 </a>
                             <?php endif; ?>
                         </td>

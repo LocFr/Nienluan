@@ -2,6 +2,12 @@
 session_start();
 include '../config.php';
 
+// Kiểm tra đăng nhập
+if (!isset($_SESSION['USER'])) {
+    header("Location: userlogin.php");
+    exit();
+}
+
 // Khởi tạo giỏ hàng
 if(!isset($_SESSION['cart'])) {
     $_SESSION['cart'] = array();
@@ -73,59 +79,75 @@ if(!empty($_SESSION['cart'])) {
     }
 }
 
-// Thêm phần xử lý thanh toán sau phần xử lý giỏ hàng
-if(isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
+// Xử lý thanh toán
+if(isset($_POST['checkout'])) {
     try {
         // Kiểm tra đăng nhập
         if(!isset($_SESSION['USER'])) {
-            $_SESSION['error'] = "Vui lòng đăng nhập để thanh toán";
             header("Location: userlogin.php");
             exit();
         }
 
-        $user_id = $_SESSION['USER']['id'];
-        $order_date = date('Y-m-d H:i:s');
-        $shipping_address = $_POST['shipping_address']; // Thêm địa chỉ giao hàng
-        $phone = $_POST['phone']; // Thêm số điện thoại
-        $payment_method = $_POST['payment_method']; // Thêm phương thức thanh toán
+        // Kiểm tra giỏ hàng có trống không
+        if(empty($_SESSION['cart'])) {
+            echo "<script>alert('Giỏ hàng trống!');</script>";
+            echo "<script>window.location='cart.php';</script>";
+            exit();
+        }
 
-        // Tạo đơn hàng mới
-        $stmt = $conn->prepare("INSERT INTO orders (user_id, total_amount, order_date, status, shipping_address, phone, payment_method) 
-                               VALUES (?, ?, ?, 'pending', ?, ?, ?)");
-        $stmt->execute([$user_id, $total, $order_date, $shipping_address, $phone, $payment_method]);
+        // Kiểm tra dữ liệu POST
+        if(empty($_POST['phone']) || empty($_POST['shipping_address'])) {
+            echo "<script>alert('Vui lòng điền đầy đủ thông tin!');</script>";
+            echo "<script>window.location='cart.php';</script>";
+            exit();
+        }
+
+        // Bắt đầu transaction
+        $conn->beginTransaction();
+
+        // Thêm vào bảng orders
+        $sql = "INSERT INTO orders (customer_name, phone, address, total_amount, status, created_at) 
+                VALUES (?, ?, ?, ?, 'Đã xác nhận', NOW())";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([
+            $_SESSION['USER']['username'],
+            $_POST['phone'],
+            $_POST['shipping_address'],
+            $total
+        ]);
+        
         $order_id = $conn->lastInsertId();
 
         // Thêm chi tiết đơn hàng
-        foreach($_SESSION['cart'] as $product_id => $quantity) {
-            $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
-            $stmt->execute([$product_id]);
-            $product = $stmt->fetch();
-            
-            if($product) {
-                // Kiểm tra số lượng tồn kho
-                if($product['quantity'] < $quantity) {
-                    throw new Exception("Sản phẩm {$product['name']} chỉ còn {$product['quantity']} sản phẩm");
-                }
-
-                // Thêm vào order_details
-                $stmt = $conn->prepare("INSERT INTO order_details (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)");
-                $stmt->execute([$order_id, $product_id, $quantity, $product['price']]);
-
-                // Cập nhật số lượng sản phẩm
-                $stmt = $conn->prepare("UPDATE products SET quantity = quantity - ? WHERE id = ?");
-                $stmt->execute([$quantity, $product_id]);
-            }
+        foreach($cart_products as $product) {
+            $sql = "INSERT INTO order_details (order_id, product_id, quantity, price) 
+                    VALUES (?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([
+                $order_id,
+                $product['id'],
+                $product['quantity'],
+                $product['price']
+            ]);
         }
 
+        // Commit transaction
+        $conn->commit();
+        
         // Xóa giỏ hàng
         unset($_SESSION['cart']);
-
-        $_SESSION['success'] = "Đặt hàng thành công! Mã đơn hàng của bạn là #" . $order_id;
-        header("Location: order_success.php?order_id=" . $order_id);
+        
+        // Chuyển hướng đến trang hóa đơn
+        header("Location: hoadon.php?order_id=" . $order_id);
         exit();
 
-    } catch(Exception $e) {
-        $_SESSION['error'] = "Lỗi khi đặt hàng: " . $e->getMessage();
+    } catch(PDOException $e) {
+        // Rollback nếu có lỗi
+        $conn->rollBack();
+        error_log("Lỗi SQL: " . $e->getMessage());
+        echo "<script>alert('Có lỗi xảy ra khi xử lý đơn hàng!');</script>";
+        echo "<script>window.location='cart.php';</script>";
+        exit();
     }
 }
 ?>
@@ -138,141 +160,54 @@ if(isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #6f42c1;
-            --secondary-color: #8a5cd0;
+       .navbar {
+            background: #e6e6fa !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
         }
-        
-        body {
-            background-image: url('../images/background.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-attachment: fixed;
-            min-height: 100vh;
-        }
-        
-        .navbar {
-            background: linear-gradient(to right, #6f42c1, #6610f2);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
         .navbar-brand {
             font-weight: bold;
-            font-size: 24px;
+            color: #6a5acd !important;
         }
-        
-        .cart-container {
-            background-color: rgba(255, 255, 255, 0.9);
+        .nav-link {
+            color: #6a5acd !important;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover {
+            color: #483d8b !important;
+            transform: translateY(-2px);
+        }
+        .status-badge {
+            padding: 5px 10px;
             border-radius: 15px;
-            box-shadow: 0 0 20px rgba(111, 66, 193, 0.3);
-            backdrop-filter: blur(10px);
+            font-size: 0.9em;
+        }
+        .status-processing {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status-confirmed {
+            background-color: #28a745;
+            color: #fff;
+        }
+        .main-content {
+            margin-top: 56px;
             padding: 20px;
-            margin-top: 30px;
-        }
-        
-        .table {
-            background-color: rgba(255, 255, 255, 0.8);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(45deg, var(--secondary-color), var(--primary-color));
-            transform: translateY(-2px);
-        }
-        
-        .btn-success {
-            background: linear-gradient(45deg, #28a745, #20c997);
-            border: none;
-        }
-        
-        .btn-success:hover {
-            background: linear-gradient(45deg, #20c997, #28a745);
-            transform: translateY(-2px);
-        }
-        
-        .product-img {
-            max-width: 80px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .quantity-input {
-            width: 80px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            padding: 5px;
-        }
-        
-        .total-row {
-            font-size: 1.2em;
-            font-weight: bold;
-            background-color: rgba(111, 66, 193, 0.1);
         }
     </style>
 </head>
 <body>
     <header>
-        <div class="header-top bg-dark text-white py-2">
+        <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #6f42c1;">
             <div class="container">
-                <div class="row">
-                    <div class="col-lg-6 col-md-12">
-                        <span><i class="fas fa-phone-alt me-2"></i>0123 456 789</span>
-                        <span class="ms-4"><i class="fas fa-envelope me-2"></i>contact@xlight.com</span>
-                    </div>
-                    <div class="col-lg-6 col-md-12 text-end">
-                        <?php if(isset($_SESSION['USER'])): ?>
-                            <a href="userlogin.php?reqact=userlogout" class="text-white text-decoration-none">
-                                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                            </a>
-                        <?php else: ?>
-                            <a href="userlogin.php" class="text-white text-decoration-none">
-                                <i class="fas fa-user me-2"></i>Đăng nhập
-                            </a>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="header-main py-3 bg-white">
-            <div class="container">
-                <div class="row align-items-center">
-                    <div class="col-lg-3 col-md-12 text-center text-lg-start mb-3 mb-lg-0">
-                        <a href="../index.php" class="text-decoration-none">
-                            <img src="../images/logo.png" alt="XLight Logo" style="height: 60px;">
-                        </a>
-                    </div>
-                    <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
-                        <form action="../search.php" method="GET" class="d-flex">
-                            <input type="text" name="keyword" class="form-control me-2" placeholder="Tìm kiếm sản phẩm...">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </form>
-                    </div>
-                    <div class="col-lg-3 col-md-12 text-center text-lg-end">
-                        <a href="cart.php" class="btn btn-outline-primary position-relative">
-                            <i class="fas fa-shopping-cart me-2"></i>Giỏ hàng
-                            <?php if(!empty($_SESSION['cart'])): ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                    <?php echo count($_SESSION['cart']); ?>
-                                </span>
-                            <?php endif; ?>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <nav class="navbar navbar-expand-lg navbar-dark">
-            <div class="container">
+                <a class="navbar-brand" href="../index.php">
+                    <img src="../images/logo.png" alt="XLight Logo" height="50">
+                    XLight
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                     <span class="navbar-toggler-icon"></span>
                 </button>
@@ -282,20 +217,83 @@ if(isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
                             <a class="nav-link" href="../index.php"><i class="fas fa-home me-2"></i>Trang chủ</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="../user/customer.php"><i class="fas fa-lightbulb me-2"></i>Sản phẩm</a>
-                      
+                            <a class="nav-link" href="customer.php">Hàng hóa</a>
                         </li>
-                    </ul>
-                    <?php if(isset($_SESSION['USER']) && $_SESSION['USER']['role'] == 'admin'): ?>
-                        <ul class="navbar-nav">
+                        <?php if(isset($_SESSION['USER'])): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="../admin/index.php"><i class="fas fa-user-cog me-2"></i>Admin</a>
+                                <a class="nav-link" href="cart.php">
+                                    <i class="fas fa-shopping-cart"></i> Giỏ hàng
+                                    <?php if(!empty($_SESSION['cart'])): ?>
+                                        <span class="badge bg-danger"><?php echo count($_SESSION['cart']); ?></span>
+                                    <?php endif; ?>
+                                </a>
                             </li>
-                        </ul>
-                    <?php endif; ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="donhang.php">
+                                    <i class="fas fa-file-invoice"></i> Đơn hàng
+                                </a>
+                            </li>
+                            <?php if($_SESSION['USER']['role'] == 'admin'): ?>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" 
+                                       role="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-cog"></i> Quản lý
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="../admin/manage_products.php">
+                                                <i class="fas fa-box"></i> Quản lý hàng hóa
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="../admin/manage_users.php">
+                                                <i class="fas fa-users"></i> Quản lý tài khoản
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </ul>
+                    <ul class="navbar-nav">
+                        <?php if(isset($_SESSION['USER'])): ?>
+                            <li class="nav-item">
+                                <span class="nav-link">
+                                    <i class="fas fa-user"></i> 
+                                    <?php echo htmlspecialchars($_SESSION['USER']['username']); ?>
+                                </span>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="userlogin.php?reqact=userlogout">
+                                    <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                                </a>
+                            </li>
+                        <?php else: ?>
+                            <li class="nav-item">
+                                <a class="nav-link" href="userlogin.php">
+                                    <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                    </ul>
                 </div>
             </div>
         </nav>
+
+        <!-- Thanh tìm kiếm -->
+        <div class="container mt-3">
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <form action="../search.php" method="GET" class="d-flex">
+                        <input type="text" name="keyword" class="form-control me-2" 
+                               placeholder="Tìm kiếm sản phẩm..." required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </header>
 
     <div class="container mt-4">
@@ -352,46 +350,52 @@ if(isset($_POST['checkout']) && !empty($_SESSION['cart'])) {
                     </button>
                 </div>
             </form>
+
+            <!-- Modal Thanh toán -->
+            <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="checkoutModalLabel">Thông tin giao hàng</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form method="POST">
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Số điện thoại</label>
+                                    <input type="text" class="form-control" id="phone" name="phone" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="shipping_address" class="form-label">Địa chỉ giao hàng</label>
+                                    <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3" required></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <p class="mb-0"><strong>Tổng tiền:</strong> <?php echo number_format($total); ?>đ</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="submit" name="checkout" class="btn btn-primary">Xác nhận đặt hàng</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Kiểm tra xem có lỗi modal không hiển thị
+                var checkoutBtn = document.querySelector('[data-bs-target="#checkoutModal"]');
+                checkoutBtn.addEventListener('click', function() {
+                    var modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+                    modal.show();
+                });
+            });
+            </script>
         <?php endif; ?>
     </div>
 
-    <!-- Thêm modal thanh toán -->
-    <div class="modal fade" id="checkoutModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-purple text-white">
-                    <h5 class="modal-title">Thông tin thanh toán</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form method="post" action="process_order.php">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Họ và tên</label>
-                            <input type="text" name="fullname" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Số điện thoại</label>
-                            <input type="tel" name="phone" class="form-control" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Địa chỉ giao hàng</label>
-                            <textarea name="address" class="form-control" required></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Phương thức thanh toán</label>
-                            <select name="payment_method" class="form-select" required>
-                                <option value="cod">Thanh toán khi giao hàng (COD)</option>
-                                <option value="bank_transfer">Chuyển khoản ngân hàng</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                        <button type="submit" class="btn btn-primary">Đặt hàng</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
+  

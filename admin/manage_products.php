@@ -9,22 +9,49 @@ if (!isset($_SESSION['USER']) || $_SESSION['USER']['role'] != 'admin') {
 }
 
 // Xử lý thêm sản phẩm
-if (isset($_GET['action']) && $_GET['action'] == 'add') {
+if (isset($_POST['add_product'])) {
     $name = $_POST['name'];
+    $category = $_POST['category'];
+    $description = $_POST['description'];
     $price = $_POST['price'];
     $quantity = $_POST['quantity'];
     
     // Xử lý upload ảnh
-    if (isset($_FILES['image']) && $_FILES['image']['error'] == 0) {
-        $image = time() . '_' . $_FILES['image']['name'];
-        move_uploaded_file($_FILES['image']['tmp_name'], "../images/" . $image);
+    $image = $_FILES['image']['name'];
+    move_uploaded_file($_FILES['image']['tmp_name'], "../images/$image");
+    
+    $sql = "INSERT INTO products (name, category, description, price, quantity, image) 
+            VALUES (?, ?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->execute([$name, $category, $description, $price, $quantity, $image]);
+    
+    header("Location: manage_products.php");
+    exit();
+}
+
+// Xử lý sửa sản phẩm
+if (isset($_POST['edit_product'])) {
+    $id = $_POST['id'];
+    $name = $_POST['name'];
+    $category = $_POST['category'];
+    $description = $_POST['description'];
+    $price = $_POST['price'];
+    $quantity = $_POST['quantity'];
+    
+    if ($_FILES['image']['name']) {
+        $image = $_FILES['image']['name'];
+        move_uploaded_file($_FILES['image']['tmp_name'], "../images/$image");
         
-        // Thêm vào database
-        $sql = "INSERT INTO products (name, price, quantity, image) VALUES (?, ?, ?, ?)";
+        $sql = "UPDATE products SET name=?, category=?, description=?, price=?, quantity=?, image=? WHERE id=?";
         $stmt = $conn->prepare($sql);
-        $stmt->execute([$name, $price, $quantity, $image]);
+        $stmt->execute([$name, $category, $description, $price, $quantity, $image, $id]);
+    } else {
+        $sql = "UPDATE products SET name=?, category=?, description=?, price=?, quantity=? WHERE id=?";
+        $stmt = $conn->prepare($sql);
+        $stmt->execute([$name, $category, $description, $price, $quantity, $id]);
     }
-    header('Location: manage_products.php');
+    
+    header("Location: manage_products.php");
     exit();
 }
 
