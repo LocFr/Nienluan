@@ -84,21 +84,19 @@ if(isset($_POST['checkout'])) {
     try {
         // Kiểm tra đăng nhập
         if(!isset($_SESSION['USER'])) {
-            header("Location: userlogin.php");
+            echo "<script>alert('Vui lòng đăng nhập để thanh toán!'); window.location='userlogin.php';</script>";
             exit();
         }
 
         // Kiểm tra giỏ hàng có trống không
         if(empty($_SESSION['cart'])) {
-            echo "<script>alert('Giỏ hàng trống!');</script>";
-            echo "<script>window.location='cart.php';</script>";
+            echo "<script>alert('Giỏ hàng trống!'); window.location='cart.php';</script>";
             exit();
         }
 
         // Kiểm tra dữ liệu POST
         if(empty($_POST['phone']) || empty($_POST['shipping_address'])) {
-            echo "<script>alert('Vui lòng điền đầy đủ thông tin!');</script>";
-            echo "<script>window.location='cart.php';</script>";
+            echo "<script>alert('Vui lòng điền đầy đủ thông tin!'); window.location='cart.php';</script>";
             exit();
         }
 
@@ -144,9 +142,7 @@ if(isset($_POST['checkout'])) {
     } catch(PDOException $e) {
         // Rollback nếu có lỗi
         $conn->rollBack();
-        error_log("Lỗi SQL: " . $e->getMessage());
-        echo "<script>alert('Có lỗi xảy ra khi xử lý đơn hàng!');</script>";
-        echo "<script>window.location='cart.php';</script>";
+        echo "<script>alert('Có lỗi xảy ra: " . $e->getMessage() . "'); window.location='cart.php';</script>";
         exit();
     }
 }
@@ -213,45 +209,18 @@ if(isset($_POST['checkout'])) {
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" href="../index.php"><i class="fas fa-home me-2"></i>Trang chủ</a>
-                        </li>
-                        <li class="nav-item">
+                      
                             <a class="nav-link" href="customer.php">Hàng hóa</a>
                         </li>
                         <?php if(isset($_SESSION['USER'])): ?>
-                            <li class="nav-item">
-                                <a class="nav-link" href="cart.php">
-                                    <i class="fas fa-shopping-cart"></i> Giỏ hàng
-                                    <?php if(!empty($_SESSION['cart'])): ?>
-                                        <span class="badge bg-danger"><?php echo count($_SESSION['cart']); ?></span>
-                                    <?php endif; ?>
-                                </a>
-                            </li>
+                            
                             <li class="nav-item">
                                 <a class="nav-link" href="donhang.php">
                                     <i class="fas fa-file-invoice"></i> Đơn hàng
                                 </a>
                             </li>
-                            <?php if($_SESSION['USER']['role'] == 'admin'): ?>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" 
-                                       role="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-cog"></i> Quản lý
-                                    </a>
-                                    <ul class="dropdown-menu">
-                                        <li>
-                                            <a class="dropdown-item" href="../admin/manage_products.php">
-                                                <i class="fas fa-box"></i> Quản lý hàng hóa
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="../admin/manage_users.php">
-                                                <i class="fas fa-users"></i> Quản lý tài khoản
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </li>
+                            <?php if(isset($_SESSION['USER']) && $_SESSION['USER']['role'] == 'admin'): ?>
+                       
                             <?php endif; ?>
                         <?php endif; ?>
                     </ul>
@@ -297,105 +266,155 @@ if(isset($_POST['checkout'])) {
     </header>
 
     <div class="container mt-4">
-        <h2>Giỏ hàng</h2>
-        <a href="../index.php" class="btn btn-primary mb-3">Tiếp tục mua hàng</a>
-
-        <?php if(empty($cart_products)): ?>
-            <div class="alert alert-info">Giỏ hàng trống</div>
-        <?php else: ?>
-            <form method="post">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Sản phẩm</th>
-                            <th>Giá</th>
-                            <th>Số lượng</th>
-                            <th>Tổng</th>
-                            <th>Xóa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($cart_products as $item): ?>
-                            <tr>
-                                <td>
-                                    <img src="../images/<?php echo htmlspecialchars($item['image']); ?>" 
-                                         alt="<?php echo htmlspecialchars($item['name']); ?>"
-                                         class="product-img me-2">
-                                    <?php echo htmlspecialchars($item['name']); ?>
-                                </td>
-                                <td><?php echo number_format($item['price'], 0, ',', '.'); ?>đ</td>
-                                <td>
-                                    <input type="number" name="quantity[<?php echo $item['id']; ?>]" 
-                                           value="<?php echo $item['quantity']; ?>" 
-                                           min="0" class="form-control quantity-input">
-                                </td>
-                                <td><?php echo number_format($item['price'] * $item['quantity'], 0, ',', '.'); ?>đ</td>
-                                <td>
-                                    <a href="cart.php?action=remove&id=<?php echo $item['id']; ?>" 
-                                       class="btn btn-danger btn-sm">Xóa</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <div class="text-end">
-                    <strong>Tổng cộng:</strong> <?php echo number_format($total, 0, ',', '.'); ?>đ
-                </div>
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="submit" name="update" class="btn btn-outline-primary">
-                        <i class="fas fa-sync-alt me-2"></i>Cập nhật
-                    </button>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#checkoutModal">
-                        <i class="fas fa-check me-2"></i>Thanh toán
-                    </button>
-                </div>
-            </form>
-
-            <!-- Modal Thanh toán -->
-            <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="checkoutModalLabel">Thông tin giao hàng</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form method="POST">
-                            <div class="modal-body">
-                                <div class="mb-3">
-                                    <label for="phone" class="form-label">Số điện thoại</label>
-                                    <input type="text" class="form-control" id="phone" name="phone" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="shipping_address" class="form-label">Địa chỉ giao hàng</label>
-                                    <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3" required></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <p class="mb-0"><strong>Tổng tiền:</strong> <?php echo number_format($total); ?>đ</p>
-                                </div>
+        <h2 class="mb-4">Giỏ hàng của bạn</h2>
+        
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Ảnh</th>
+                        <th>Tên SP</th>
+                        <th>Giá</th>
+                        <th>SL</th>
+                        <th>Tổng</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach($_SESSION['cart'] as $id => $quantity): 
+                        $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+                        $stmt->execute([$id]);
+                        $product = $stmt->fetch();
+                        if($product):
+                    ?>
+                    <tr>
+                        <td>
+                            <img src="../images/<?php echo $product['image']; ?>" 
+                                 class="cart-img" alt="<?php echo $product['name']; ?>">
+                        </td>
+                        <td class="align-middle"><?php echo $product['name']; ?></td>
+                        <td class="align-middle"><?php echo number_format($product['price']); ?>đ</td>
+                        <td class="align-middle" style="width: 120px;">
+                            <div class="input-group">
+                                <a href="?action=decrease&id=<?php echo $id; ?>" 
+                                   class="btn btn-sm btn-outline-secondary">-</a>
+                                <input type="text" class="form-control text-center" 
+                                       value="<?php echo $quantity; ?>" readonly>
+                                <a href="?action=increase&id=<?php echo $id; ?>" 
+                                   class="btn btn-sm btn-outline-secondary">+</a>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                <button type="submit" name="checkout" class="btn btn-primary">Xác nhận đặt hàng</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
+                        </td>
+                        <td class="align-middle">
+                            <?php echo number_format($product['price'] * $quantity); ?>đ
+                        </td>
+                        <td class="align-middle">
+                            <a href="?action=remove&id=<?php echo $id; ?>" 
+                               class="btn btn-danger btn-sm"
+                               onclick="return confirm('Xóa sản phẩm này?')">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    <?php endif; endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="table-active">
+                        <td colspan="4" class="text-end"><strong>Tổng cộng:</strong></td>
+                        <td><strong><?php echo number_format($total); ?>đ</strong></td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
 
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                // Kiểm tra xem có lỗi modal không hiển thị
-                var checkoutBtn = document.querySelector('[data-bs-target="#checkoutModal"]');
-                checkoutBtn.addEventListener('click', function() {
-                    var modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-                    modal.show();
-                });
-            });
-            </script>
-        <?php endif; ?>
+        <div class="d-flex justify-content-between mt-3">
+            <a href="customer.php" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Tiếp tục mua hàng
+            </a>
+            <?php if(!empty($_SESSION['cart'])): ?>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#checkoutModal">
+                    Thanh toán<i class="fas fa-arrow-right ms-2"></i>
+                </button>
+            <?php endif; ?>
+        </div>
     </div>
 
+    <style>
+        .cart-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        
+        .table th {
+            background-color: #6f42c1;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .input-group {
+            width: 120px;
+        }
+        
+        .input-group input {
+            height: 31px;
+            font-size: 14px;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        @media (max-width: 768px) {
+            .table {
+                font-size: 14px;
+            }
+            
+            .cart-img {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .input-group {
+                width: 100px;
+            }
+        }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <div class="modal fade" id="checkoutModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="cart.php" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Thông tin thanh toán</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Số điện thoại</label>
+                            <input type="text" name="phone" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Địa chỉ giao hàng</label>
+                            <textarea name="shipping_address" class="form-control" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                        <button type="submit" name="checkout" class="btn btn-primary">Xác nhận đặt hàng</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
   

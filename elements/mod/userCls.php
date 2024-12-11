@@ -53,9 +53,9 @@ class user {
             
             // Debug kết quả
             if($result) {
-                error_log("Login successful. User data: " . print_r($result, true));
+                error_log("success. User data: " . print_r($result, true));
             } else {
-                error_log("Login failed. No matching user found.");
+                error_log("error. No matching user found.");
             }
             
             return $result;
