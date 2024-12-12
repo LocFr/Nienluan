@@ -130,9 +130,6 @@ include 'config.php';
                         <li class="nav-item">
                             <a class="nav-link" href="user/cart.php">
                                 <i class="fas fa-shopping-cart"></i> Giỏ hàng
-                                <?php if(!empty($_SESSION['cart'])): ?>
-                                    <span class="badge bg-danger"><?php echo count($_SESSION['cart']); ?></span>
-                                <?php endif; ?>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -179,7 +176,7 @@ include 'config.php';
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="user/userlogin.php?reqact=userlogout">
+                            <a class="nav-link" href="user/userlogin.php?">
                                 <i class="fas fa-sign-out-alt"></i> Đăng xuất
                             </a>
                         </li>
@@ -231,15 +228,16 @@ include 'config.php';
                                     <p class="card-text text-danger fw-bold fs-5 mb-3">
                                         <?php echo number_format($product['price'], 0, ',', '.'); ?>đ
                                     </p>
-                                    <?php if($product['quantity'] > 0): ?>
+                                    
+                                    <?php if(isset($_SESSION['USER'])): ?>
                                         <a href="user/cart.php?action=add&id=<?php echo $product['id']; ?>" 
                                            class="btn btn-primary w-100">
                                             <i class="fas fa-cart-plus"></i> Thêm vào giỏ
                                         </a>
                                     <?php else: ?>
-                                        <button class="btn btn-secondary w-100" disabled>
-                                            Hết hàng
-                                        </button>
+                                        <a href="user/userlogin.php" class="btn btn-secondary w-100">
+                                            <i class="fas fa-sign-in-alt"></i> Đăng nhập để mua
+                                        </a>
                                     <?php endif; ?>
                                 </div>
                             </div>

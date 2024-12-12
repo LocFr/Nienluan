@@ -11,7 +11,7 @@ if(isset($_POST['userregister'])) {
         
         // Kiểm tra email đã tồn tại chưa
         $check = $conn->prepare("SELECT * FROM users WHERE email = ?");
-        $check->execute([$email]);
+        $check->execute(params: [$email]);
         if($check->rowCount() > 0) {
             $_SESSION['error'] = "Email này đã được sử dụng!";
             header("Location: userlogin.php");
@@ -93,7 +93,7 @@ if(isset($_GET['reqact']) && $_GET['reqact'] == 'userlogout') {
         }
         
         body {
-            background-image: url('../images/background.png');
+         
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;

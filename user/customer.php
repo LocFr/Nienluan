@@ -251,103 +251,89 @@ try {
 
     <div class="container mt-4">
         <!-- Hiển thị sản phẩm -->
-        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-4">
-            <?php foreach($products as $product): ?>
-            <div class="col">
-                <div class="card h-100 product-card">
-                    <div class="position-relative">
-                        <img src="../images/<?php echo htmlspecialchars($product['image']); ?>" 
-                             class="card-img-top product-img cursor-pointer" 
-                             alt="<?php echo htmlspecialchars($product['name']); ?>"
-                             data-bs-toggle="modal" 
-                             data-bs-target="#productModal<?php echo $product['id']; ?>">
-                        <?php if($product['quantity'] <= 0): ?>
-                            <div class="sold-out-badge">Hết hàng</div>
-                        <?php endif; ?>
-                    </div>
-                    <div class="card-body">
-                        <h5 class="card-title text-truncate mb-2 cursor-pointer"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#productModal<?php echo $product['id']; ?>">
-                            <?php echo htmlspecialchars($product['name']); ?>
-                        </h5>
-                        <p class="card-text text-danger fw-bold mb-2">
-                            <?php echo number_format($product['price'], 0, ',', '.'); ?>đ
-                        </p>
-                        <p class="card-text small mb-3">
-                            Còn lại: <?php echo $product['quantity']; ?>
-                        </p>
-                        <?php if($product['quantity'] > 0): ?>
-                            <a href="cart.php?action=add&id=<?php echo $product['id']; ?>" 
-                               class="btn btn-primary btn-sm w-100">
-                                <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ
-                            </a>
-                        <?php else: ?>
-                            <button class="btn btn-secondary btn-sm w-100" disabled>
-                                Hết hàng
-                            </button>
-                        <?php endif; ?>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Chi tiết sản phẩm -->
-            <div class="modal fade" id="productModal<?php echo $product['id']; ?>" tabindex="-1">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">Chi tiết sản phẩm</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <img src="../images/<?php echo htmlspecialchars($product['image']); ?>" 
-                                         class="img-fluid rounded" 
-                                         alt="<?php echo htmlspecialchars($product['name']); ?>">
-                                </div>
-                                <div class="col-md-6">
-                                    <h4 class="mb-3"><?php echo htmlspecialchars($product['name']); ?></h4>
-                                    <p class="text-danger h4 mb-3">
+        <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
+            <?php
+            try {
+                $sql = "SELECT * FROM products ORDER BY id DESC";
+                $stmt = $conn->prepare($sql);
+                $stmt->execute();
+                
+                while ($product = $stmt->fetch()) {
+                    ?>
+                    <div class="col d-flex align-items-stretch">
+                        <div class="card w-100">
+                            <!-- Hình ảnh có thể click -->
+                            <div class="card-img-wrapper" style="height: 200px; overflow: hidden; cursor: pointer;" 
+                                 onclick="showProductDetails(
+                                    '<?php echo htmlspecialchars($product['name']); ?>', 
+                                    '<?php echo number_format($product['price'], 0, ',', '.'); ?>đ',
+                                    '<?php echo htmlspecialchars($product['category']); ?>',
+                                    '<?php echo htmlspecialchars($product['description']); ?>',
+                                    '../images/<?php echo $product['image']; ?>'
+                                 )">
+                                <img src="../images/<?php echo $product['image']; ?>" 
+                                     class="card-img-top h-100 w-100"
+                                     alt="<?php echo $product['name']; ?>"
+                                     style="object-fit: cover;">
+                            </div>
+                            
+                            <div class="card-body d-flex flex-column">
+                                <!-- Tên sản phẩm có thể click -->
+                                <h5 class="card-title product-title mb-2" style="cursor: pointer;"
+                                    onclick="showProductDetails(
+                                        '<?php echo htmlspecialchars($product['name']); ?>', 
+                                        '<?php echo number_format($product['price'], 0, ',', '.'); ?>đ',
+                                        '<?php echo htmlspecialchars($product['category']); ?>',
+                                        '<?php echo htmlspecialchars($product['description']); ?>',
+                                        '../images/<?php echo $product['image']; ?>'
+                                    )">
+                                    <?php echo htmlspecialchars($product['name']); ?>
+                                </h5>
+                                
+                                <div class="mt-auto">
+                                    <p class="card-text text-danger fw-bold fs-5 mb-3">
                                         <?php echo number_format($product['price'], 0, ',', '.'); ?>đ
                                     </p>
-                                    <p class="mb-3">
-                                        <strong>Danh mục:</strong> 
-                                        <?php echo htmlspecialchars($product['category']); ?>
-                                    </p>
-                                    <p class="mb-3">
-                                        <strong>Tình trạng:</strong> 
-                                        <?php echo $product['quantity'] > 0 ? 'Còn hàng' : 'Hết hàng'; ?>
-                                        (<?php echo $product['quantity']; ?> sản phẩm)
-                                    </p>
-                                    <p class="mb-4">
-                                        <strong>Mô tả:</strong><br>
-                                        <?php echo nl2br(htmlspecialchars($product['description'])); ?>
-                                    </p>
-                                    <?php if($product['quantity'] > 0): ?>
-                                        <a href="cart.php?action=add&id=<?php echo $product['id']; ?>" 
-                                           class="btn btn-primary w-100">
-                                            <i class="fas fa-cart-plus me-2"></i>Thêm vào giỏ
-                                        </a>
-                                    <?php else: ?>
-                                        <button class="btn btn-secondary w-100" disabled>
-                                            <i class="fas fa-times-circle me-2"></i>Hết hàng
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-outline-info" 
+                                                onclick="addToCompare(
+                                                    '<?php echo $product['id']; ?>',
+                                                    '<?php echo htmlspecialchars($product['name']); ?>', 
+                                                    '<?php echo number_format($product['price'], 0, ',', '.'); ?>',
+                                                    '<?php echo htmlspecialchars($product['category']); ?>',
+                                                    '<?php echo htmlspecialchars($product['description']); ?>',
+                                                    '../images/<?php echo $product['image']; ?>'
+                                                )">
+                                            <i class="fas fa-balance-scale"></i> So sánh sản phẩm
                                         </button>
-                                    <?php endif; ?>
+                                        
+                                        <?php if(isset($_SESSION['USER'])): ?>
+                                            <a href="cart.php?action=add&id=<?php echo $product['id']; ?>" 
+                                               class="btn btn-primary">
+                                                <i class="fas fa-cart-plus"></i> Thêm vào giỏ
+                                            </a>
+                                        <?php else: ?>
+                                            <a href="userlogin.php" class="btn btn-secondary">
+                                                <i class="fas fa-sign-in-alt"></i> Đăng nhập để mua
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <?php endforeach; ?>
+                    <?php
+                }
+            } catch(PDOException $e) {
+                echo '<div class="alert alert-danger">Lỗi: ' . $e->getMessage() . '</div>';
+            }
+            ?>
         </div>
     </div>
 
     <style>
-        .cursor-pointer {
-            cursor: pointer;
-        }
+       
         
         .product-card {
             border: 1px solid #ddd;
@@ -415,6 +401,115 @@ try {
                 margin: 0.5rem;
             }
         }
+    </style>
+
+    <!-- Modal chi tiết sản phẩm -->
+    <div class="modal fade" id="productDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Chi tiết sản phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <img id="detailProductImage" class="img-fluid" alt="">
+                        </div>
+                        <div class="col-md-6">
+                            <h4 id="detailProductName"></h4>
+                            <p class="text-danger fw-bold fs-4" id="detailProductPrice"></p>
+                            <p><strong>Danh mục:</strong> <span id="detailProductCategory"></span></p>
+                            <div class="mb-3">
+                                <strong>Mô tả:</strong>
+                                <p id="detailProductDescription" class="mt-2"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+    function showProductDetails(name, price, category, description, image) {
+        document.getElementById('detailProductName').textContent = name;
+        document.getElementById('detailProductPrice').textContent = price;
+        document.getElementById('detailProductCategory').textContent = category;
+        document.getElementById('detailProductDescription').textContent = description;
+        document.getElementById('detailProductImage').src = image;
+        
+        new bootstrap.Modal(document.getElementById('productDetailModal')).show();
+    }
+
+    let compareProducts = [];
+
+    function addToCompare(id, name, price, category, description, image) {
+        // Kiểm tra số lượng sản phẩm so sánh
+        if (compareProducts.length >= 2) {
+            compareProducts = []; // Reset nếu đã đủ 2 sản phẩm
+        }
+        
+        // Thêm sản phẩm vào mảng so sánh
+        compareProducts.push({
+            id: id,
+            name: name,
+            price: price,
+            category: category,
+            description: description,
+            image: image
+        });
+        
+        // Nếu đã có 2 sản phẩm thì hiển thị modal
+        if (compareProducts.length === 2) {
+            updateCompareModal();
+            new bootstrap.Modal(document.getElementById('compareModal')).show();
+        } else {
+            alert('Vui lòng chọn sản phẩm thứ hai để so sánh');
+        }
+    }
+
+    function updateCompareModal() {
+        // Cập nhật thông tin sản phẩm 1
+        document.getElementById('compare1_image').innerHTML = `<img src="${compareProducts[0].image}" class="img-fluid" style="max-height: 150px">`;
+        document.getElementById('compare1_name').textContent = compareProducts[0].name;
+        document.getElementById('compare1_price').textContent = compareProducts[0].price;
+        document.getElementById('compare1_category').textContent = compareProducts[0].category;
+        document.getElementById('compare1_description').textContent = compareProducts[0].description;
+        
+        // Cập nhật thông tin sản phẩm 2
+        document.getElementById('compare2_image').innerHTML = `<img src="${compareProducts[1].image}" class="img-fluid" style="max-height: 150px">`;
+        document.getElementById('compare2_name').textContent = compareProducts[1].name;
+        document.getElementById('compare2_price').textContent = compareProducts[1].price;
+        document.getElementById('compare2_category').textContent = compareProducts[1].category;
+        document.getElementById('compare2_description').textContent = compareProducts[1].description;
+    }
+    </script>
+
+    <style>
+    .modal-xl {
+        max-width: 90%;
+    }
+
+    .table img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .compare-highlight {
+        background-color: #e8f4f8;
+    }
+
+    .product-title:hover {
+        color: #0d6efd;
+        text-decoration: underline;
+    }
+
+    .card-img-wrapper:hover img {
+        transform: scale(1.05);
+        transition: transform 0.3s ease;
+    }
     </style>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
