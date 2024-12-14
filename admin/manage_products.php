@@ -127,7 +127,7 @@ $products = $stmt->fetchAll();
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li><a class="dropdown-item" href="../user/profile.php">Thông tin tài khoản</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="../user/logout.php">Đăng xuất</a></li>
+                                <li><a class="dropdown-item" href="../user/userlogin.php">Đăng xuất</a></li>
                             </ul>
                         </li>
                     <?php endif; ?>

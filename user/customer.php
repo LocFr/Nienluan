@@ -2,35 +2,16 @@
 session_start();
 include '../config.php';
 
-// Lấy tham số sắp xếp từ URL
-$sort = isset($_GET['sort']) ? $_GET['sort'] : '';
-$search = isset($_GET['search']) ? $_GET['search'] : '';
+// Lấy tham số tìm kiếm từ URL
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
 try {
-    // Xây dựng câu truy vấn SQL dựa trên điều kiện sắp xếp
+    // Xây dựng câu truy vấn SQL
     $sql = "SELECT * FROM products WHERE 1=1";
     
     // Thêm điều kiện tìm kiếm nếu có
     if ($search) {
         $sql .= " AND name LIKE :search";
-    }
-    
-    // Thêm điều kiện sắp xếp
-    switch($sort) {
-        case 'name_asc':
-            $sql .= " ORDER BY name ASC";
-            break;
-        case 'name_desc':
-            $sql .= " ORDER BY name DESC";
-            break;
-        case 'price_asc':
-            $sql .= " ORDER BY price ASC";
-            break;
-        case 'price_desc':
-            $sql .= " ORDER BY price DESC";
-            break;
-        default:
-            $sql .= " ORDER BY id DESC";
     }
     
     $stmt = $conn->prepare($sql);
@@ -59,6 +40,7 @@ try {
             margin: 0;
             padding: 0;
             min-height: 100vh;
+            padding-top: 60px;
         }
         
         .main-content {
@@ -158,6 +140,12 @@ try {
             background-color: #f8f9fa;
         }
         
+     
+        .search-form {
+            width: 300px; 
+             
+        }
+      
     </style>
 </head>
 <body>
@@ -195,26 +183,25 @@ try {
                                     <a class="dropdown-item" href="../admin/manage_users.php">
                                         <i class="fas fa-users"></i> Quản lý tài khoản
                                     </a>
-                                    <li>
-                                        <a class="dropdown-item" href="../admin/manage_orders.php">
-                                            <i class="fas fa-file-invoice-dollar"></i> Quản lý đơn hàng
-                                        </a>
-                                    </li>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="../admin/manage_orders.php">
+                                        <i class="fas fa-file-invoice-dollar"></i> Quản lý đơn hàng
+                                    </a>
                                 </li>
                             </ul>
                         </li>
                     <?php endif; ?>
                 </ul>
                 
-                <form class="d-flex me-3" method="GET">
-                    <div class="input-group">
-                        <input type="text" name="search" class="form-control" 
-                               placeholder="Tìm kiếm sản phẩm..." 
-                               value="<?php echo htmlspecialchars($search ?? ''); ?>">
-                        <button class="btn btn-light" type="submit">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
+                <!-- Thanh tìm kiếm mới -->
+                <form class="d-flex search-form" method="GET">
+                    <input type="text" name="search" class="form-control" 
+                           placeholder="Tìm kiếm sản phẩm..." 
+                           value="<?php echo htmlspecialchars($search); ?>">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="fas fa-search"></i> 
+                    </button>
                 </form>
                 
                 <ul class="navbar-nav">
@@ -278,7 +265,7 @@ try {
                             </div>
                             
                             <div class="card-body d-flex flex-column">
-                                <!-- Tên sản phẩm có thể click -->
+                               
                                 <h5 class="card-title product-title mb-2" style="cursor: pointer;"
                                     onclick="showProductDetails(
                                         '<?php echo htmlspecialchars($product['name']); ?>', 
@@ -296,18 +283,6 @@ try {
                                     </p>
                                     
                                     <div class="d-grid gap-2">
-                                        <button type="button" class="btn btn-outline-info" 
-                                                onclick="addToCompare(
-                                                    '<?php echo $product['id']; ?>',
-                                                    '<?php echo htmlspecialchars($product['name']); ?>', 
-                                                    '<?php echo number_format($product['price'], 0, ',', '.'); ?>',
-                                                    '<?php echo htmlspecialchars($product['category']); ?>',
-                                                    '<?php echo htmlspecialchars($product['description']); ?>',
-                                                    '../images/<?php echo $product['image']; ?>'
-                                                )">
-                                            <i class="fas fa-balance-scale"></i> So sánh sản phẩm
-                                        </button>
-                                        
                                         <?php if(isset($_SESSION['USER'])): ?>
                                             <a href="cart.php?action=add&id=<?php echo $product['id']; ?>" 
                                                class="btn btn-primary">
@@ -441,49 +416,6 @@ try {
         document.getElementById('detailProductImage').src = image;
         
         new bootstrap.Modal(document.getElementById('productDetailModal')).show();
-    }
-
-    let compareProducts = [];
-
-    function addToCompare(id, name, price, category, description, image) {
-        // Kiểm tra số lượng sản phẩm so sánh
-        if (compareProducts.length >= 2) {
-            compareProducts = []; // Reset nếu đã đủ 2 sản phẩm
-        }
-        
-        // Thêm sản phẩm vào mảng so sánh
-        compareProducts.push({
-            id: id,
-            name: name,
-            price: price,
-            category: category,
-            description: description,
-            image: image
-        });
-        
-        // Nếu đã có 2 sản phẩm thì hiển thị modal
-        if (compareProducts.length === 2) {
-            updateCompareModal();
-            new bootstrap.Modal(document.getElementById('compareModal')).show();
-        } else {
-            alert('Vui lòng chọn sản phẩm thứ hai để so sánh');
-        }
-    }
-
-    function updateCompareModal() {
-        // Cập nhật thông tin sản phẩm 1
-        document.getElementById('compare1_image').innerHTML = `<img src="${compareProducts[0].image}" class="img-fluid" style="max-height: 150px">`;
-        document.getElementById('compare1_name').textContent = compareProducts[0].name;
-        document.getElementById('compare1_price').textContent = compareProducts[0].price;
-        document.getElementById('compare1_category').textContent = compareProducts[0].category;
-        document.getElementById('compare1_description').textContent = compareProducts[0].description;
-        
-        // Cập nhật thông tin sản phẩm 2
-        document.getElementById('compare2_image').innerHTML = `<img src="${compareProducts[1].image}" class="img-fluid" style="max-height: 150px">`;
-        document.getElementById('compare2_name').textContent = compareProducts[1].name;
-        document.getElementById('compare2_price').textContent = compareProducts[1].price;
-        document.getElementById('compare2_category').textContent = compareProducts[1].category;
-        document.getElementById('compare2_description').textContent = compareProducts[1].description;
     }
     </script>
 

@@ -74,25 +74,28 @@ if(isset($_POST['add_user'])) {
 if(isset($_POST['edit_user'])) {
     try {
         $id = $_POST['id'];
+        $username = $_POST['username']; // Lấy tên đăng nhập mới
         $email = $_POST['email'];
         $role = $_POST['role'];
         
         // Debug
         error_log("Updating user ID: " . $id);
+        error_log("New username: " . $username);
         error_log("New email: " . $email);
         error_log("New role: " . $role);
         
+        // Cập nhật tên đăng nhập
         if(!empty($_POST['password'])) {
             // Nếu có cập nhật mật khẩu
             $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-            $sql = "UPDATE users SET email = ?, role = ?, password = ? WHERE id = ?";
+            $sql = "UPDATE users SET username = ?, email = ?, role = ?, password = ? WHERE id = ?";
             $stmt = $conn->prepare($sql);
-            $result = $stmt->execute([$email, $role, $password, $id]);
+            $result = $stmt->execute([$username, $email, $role, $password, $id]);
         } else {
             // Nếu không đổi mật khẩu
-            $sql = "UPDATE users SET email = ?, role = ? WHERE id = ?";
+            $sql = "UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?";
             $stmt = $conn->prepare($sql);
-            $result = $stmt->execute([$email, $role, $id]);
+            $result = $stmt->execute([$username, $email, $role, $id]);
         }
         
         if($result) {
@@ -164,7 +167,7 @@ if(isset($_POST['edit_user'])) {
                             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                                 <li><a class="dropdown-item" href="../user/profile.php">Thông tin tài khoản</a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="../user/logout.php">Đăng xuất</a></li>
+                                <li><a class="dropdown-item" href="user/userlogin.php">Đăng xuất</a></li>
                             </ul>
                         </li>
                     <?php endif; ?>
@@ -317,7 +320,7 @@ if(isset($_POST['edit_user'])) {
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Tên đăng nhập</label>
-                            <input type="text" class="form-control" value="<?php echo $user['username']; ?>" readonly>
+                            <input type="text" name="username" class="form-control" value="<?php echo $user['username']; ?>" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
